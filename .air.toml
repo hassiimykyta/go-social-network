@@ -1,0 +1,9 @@
+tmp_dir = "/tmp/air"
+
+[build]
+cmd = "true"                     
+bin = ""                         
+full_bin = "go run ./cmd/api"    
+
+include_dir = ["cmd", "internal"]
+include_ext = ["go"]
