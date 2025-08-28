@@ -6,11 +6,15 @@ import (
 	"go-rest-chi/internal/config"
 	appdb "go-rest-chi/internal/db"
 	"go-rest-chi/internal/httpserver"
+	"go-rest-chi/internal/repositories"
 	"go-rest-chi/internal/router"
+	"go-rest-chi/internal/services"
 	"log"
 	"os"
 	"os/signal"
 	"syscall"
+
+	"github.com/go-chi/chi/v5"
 )
 
 func openDB(cfg *config.Config) (*appdb.SQL, error) {
@@ -28,6 +32,30 @@ func openDB(cfg *config.Config) (*appdb.SQL, error) {
 	return sqlc, nil
 }
 
+func initRouter(cfg *config.Config, sqlDB *appdb.SQL) *chi.Mux {
+
+	userRepo := repositories.NewUserRepository(sqlDB)
+	userSvc := services.NewUserService(userRepo)
+
+	r := router.New(router.Deps{
+		DB: sqlDB,
+		Services: router.Services{
+			Users: userSvc,
+		},
+	}, router.Options{
+		CORS: router.CORSOpts{
+			AllowedOrigins:   cfg.CORS.AllowedOrigins,
+			AllowedMethods:   cfg.CORS.AllowedMethods,
+			AllowedHeaders:   cfg.CORS.AllowedHeaders,
+			ExposedHeaders:   cfg.CORS.ExposedHeaders,
+			AllowCredentials: cfg.CORS.AllowCredentials,
+			MaxAge:           cfg.CORS.MaxAge,
+		},
+	})
+
+	return r
+}
+
 func main() {
 	cfg, err := config.Load()
 	if err != nil {
@@ -42,18 +70,7 @@ func main() {
 	}
 	defer sqlDB.Close()
 
-	r := router.New(router.Deps{
-		DB: sqlDB,
-	}, router.Options{
-		CORS: router.CORSOpts{
-			AllowedOrigins:   cfg.CORS.AllowedOrigins,
-			AllowedMethods:   cfg.CORS.AllowedMethods,
-			AllowedHeaders:   cfg.CORS.AllowedHeaders,
-			ExposedHeaders:   cfg.CORS.ExposedHeaders,
-			AllowCredentials: cfg.CORS.AllowCredentials,
-			MaxAge:           cfg.CORS.MaxAge,
-		},
-	})
+	r := initRouter(cfg, sqlDB)
 
 	srv, err := httpserver.New(httpserver.Options{
 		Addr:         addr,

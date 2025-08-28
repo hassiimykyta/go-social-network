@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"go-rest-chi/internal/dbgen"
 	"time"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
@@ -12,6 +13,7 @@ import (
 
 type SQL struct {
 	DB *sql.DB
+	Q  *dbgen.Queries
 }
 
 type Options struct {
@@ -53,7 +55,7 @@ func Open(opts Options) (*SQL, error) {
 		return nil, fmt.Errorf("db.PingContext %w", err)
 	}
 
-	return &SQL{DB: db}, nil
+	return &SQL{DB: db, Q: dbgen.New(db)}, nil
 }
 
 func (s *SQL) Check(ctx context.Context) error {
