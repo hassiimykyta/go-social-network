@@ -6,7 +6,6 @@ import (
 	"go-rest-chi/internal/models"
 	"go-rest-chi/internal/repositories"
 	"strings"
-	"unicode/utf8"
 
 	"golang.org/x/crypto/bcrypt"
 )
@@ -30,22 +29,8 @@ func NewUserService(r repositories.UserRepository) UserService {
 	return &userService{repo: r}
 }
 
-func lookLikeEmail(s string) bool {
-	return strings.Count(s, "@") == 1 && strings.Contains(s, ".")
-}
-
 // Register implements UserService.
 func (u *userService) Register(ctx context.Context, email string, username string, password string) (models.UserPublic, error) {
-	email = strings.TrimSpace(strings.ToLower(email))
-	if !lookLikeEmail(email) {
-		return models.UserPublic{}, ErrInvalidEmail
-	}
-
-	if utf8.RuneCountInString(password) < 8 {
-		return models.UserPublic{}, ErrInvalidPassword
-	}
-
-	username = strings.TrimSpace(username)
 
 	if ok, err := u.repo.ExistsByUsername(ctx, username); err == nil && ok {
 		return models.UserPublic{}, repositories.ErrUsernameTaken
@@ -70,18 +55,13 @@ func (u *userService) Register(ctx context.Context, email string, username strin
 
 // Login implements UserService.
 func (u *userService) Login(ctx context.Context, identifier, password string) (models.UserPublic, error) {
-	id := strings.TrimSpace(identifier)
-	if id == "" && strings.TrimSpace(password) == "" {
-		return models.UserPublic{}, ErrBadCredentials
-	}
-
 	var usr models.User
 	var err error
 
-	if strings.Contains(id, "@") {
-		usr, err = u.repo.GetByEmail(ctx, id)
+	if strings.Contains(identifier, "@") {
+		usr, err = u.repo.GetByEmail(ctx, identifier)
 	} else {
-		usr, err = u.repo.GetByUsername(ctx, id)
+		usr, err = u.repo.GetByUsername(ctx, identifier)
 	}
 
 	if err != nil {

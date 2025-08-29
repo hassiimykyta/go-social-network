@@ -83,7 +83,7 @@ func (r *userRepo) GetByUsername(ctx context.Context, username string) (models.U
 		if errors.Is(err, sql.ErrNoRows) {
 			return models.User{}, ErrUserNotFound
 		}
-		return models.User{}, fmt.Errorf("GetUserByUsernae : %v", err)
+		return models.User{}, fmt.Errorf("GetUserByUsername : %v", err)
 	}
 	return toModel(u), nil
 }

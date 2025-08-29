@@ -35,12 +35,16 @@ func openDB(cfg *config.Config) (*appdb.SQL, error) {
 func initRouter(cfg *config.Config, sqlDB *appdb.SQL) *chi.Mux {
 
 	userRepo := repositories.NewUserRepository(sqlDB)
+	postRepo := repositories.NewPostRepository(sqlDB)
+
 	userSvc := services.NewUserService(userRepo)
+	postSvc := services.NewPostService(postRepo)
 
 	r := router.New(router.Deps{
 		DB: sqlDB,
 		Services: router.Services{
 			Users: userSvc,
+			Posts: postSvc,
 		},
 	}, router.Options{
 		CORS: router.CORSOpts{

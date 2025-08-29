@@ -6,6 +6,7 @@ import (
 	"go-rest-chi/internal/services"
 	"net/http"
 	"strings"
+	"unicode/utf8"
 )
 
 type AuthHandler struct {
@@ -29,6 +30,10 @@ type loginReq struct {
 	Password   string `json:"password"`
 }
 
+func lookLikeEmail(s string) bool {
+	return strings.Count(s, "@") == 1 && strings.Contains(s, ".")
+}
+
 func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 	var req registerReq
 
@@ -43,7 +48,21 @@ func (h *AuthHandler) Register(w http.ResponseWriter, r *http.Request) {
 
 	}
 
-	pub, err := h.users.Register(r.Context(), req.Email, req.Username, req.Password)
+	email := strings.TrimSpace(strings.ToLower(req.Email))
+	if !lookLikeEmail(email) {
+		resp.Error(w, r, http.StatusBadRequest, "BAD_JSON", "invalid json")
+
+	}
+
+	password := req.Password
+	if utf8.RuneCountInString(password) < 8 {
+		resp.Error(w, r, http.StatusBadRequest, "BAD_JSON", "pasword must contain 8 or more symbols")
+
+	}
+
+	username := strings.TrimSpace(req.Username)
+
+	pub, err := h.users.Register(r.Context(), email, username, password)
 	if err != nil {
 		resp.Error(w, r, http.StatusConflict, "REGISTER_FAILED", err.Error())
 		return
@@ -60,13 +79,16 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if strings.TrimSpace(req.Identifier) == "" && strings.TrimSpace(req.Password) == "" {
+	identifier := strings.TrimSpace(req.Identifier)
+	password := strings.TrimSpace(req.Password)
+
+	if identifier == "" && password == "" {
 		resp.Error(w, r, http.StatusBadRequest, "MISSING_FIELDS", "identifier and password are required")
 		return
 
 	}
 
-	pub, err := h.users.Login(r.Context(), req.Identifier, req.Password)
+	pub, err := h.users.Login(r.Context(), identifier, password)
 	if err != nil {
 		resp.Error(w, r, http.StatusConflict, "REGISTER_FAILED", err.Error())
 		return

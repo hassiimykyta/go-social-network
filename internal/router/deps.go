@@ -7,6 +7,7 @@ import (
 
 type Services struct {
 	Users services.UserService
+	Posts services.PostService
 }
 
 type Deps struct {
