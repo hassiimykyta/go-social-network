@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"go-rest-chi/internal/auth"
 	"go-rest-chi/internal/config"
 	appdb "go-rest-chi/internal/db"
 	"go-rest-chi/internal/httpserver"
@@ -37,6 +38,8 @@ func initRouter(cfg *config.Config, sqlDB *appdb.SQL) *chi.Mux {
 	userRepo := repositories.NewUserRepository(sqlDB)
 	postRepo := repositories.NewPostRepository(sqlDB)
 
+	jwtSvc := auth.NewService(cfg.JWT.Secret, cfg.JWT.Issuer, cfg.JWT.AccessTTL, cfg.JWT.RefreshTTL)
+
 	userSvc := services.NewUserService(userRepo)
 	postSvc := services.NewPostService(postRepo)
 
@@ -45,6 +48,7 @@ func initRouter(cfg *config.Config, sqlDB *appdb.SQL) *chi.Mux {
 		Services: router.Services{
 			Users: userSvc,
 			Posts: postSvc,
+			JWT:   jwtSvc,
 		},
 	}, router.Options{
 		CORS: router.CORSOpts{

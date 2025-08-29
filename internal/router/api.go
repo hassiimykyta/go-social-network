@@ -11,8 +11,8 @@ func MountAPI(r *chi.Mux, d Deps) {
 		api.Route("/v1", func(v1 chi.Router) {
 			routes.MountHealth(v1, d.DB)
 			routes.MountDB(v1, d.DB)
-			routes.MountAuth(v1, d.Services.Users)
-			routes.MountPosts(v1, d.Services.Posts)
+			routes.MountAuth(v1, d.Services.JWT, d.Services.Users)
+			routes.MountPosts(v1, d.Services.JWT, d.Services.Posts)
 			routes.MountUsers(v1, d.Services.Posts)
 		})
 	})

@@ -37,10 +37,18 @@ type CORSConfig struct {
 	MaxAge           int
 }
 
+type JWTConfig struct {
+	Secret     string
+	Issuer     string
+	AccessTTL  time.Duration
+	RefreshTTL time.Duration
+}
+
 type Config struct {
 	App  AppConfig
 	DB   DBConfig
 	CORS CORSConfig
+	JWT  JWTConfig
 }
 
 func (c *Config) Validate() error {
@@ -103,6 +111,12 @@ func Load() (*Config, error) {
 			ExposedHeaders:   helpers.Csv(helpers.GetEnv("CORS_EXPOSE_HEADERS", "")),
 			AllowCredentials: helpers.MustBool(helpers.GetEnv("CORS_ALLOW_CREDENTIALS", "true"), true),
 			MaxAge:           helpers.MustInt(helpers.GetEnv("CORS_MAX_AGE", "300"), 300),
+		},
+		JWT: JWTConfig{
+			Secret:     helpers.GetEnv("JWT_SECRET", "dev_secret_change_me"),
+			Issuer:     helpers.GetEnv("JWT_ISSUER", "app"),
+			AccessTTL:  helpers.MustDur(helpers.GetEnv("JWT_ACCESS_TTL", "15m"), 15*time.Minute),
+			RefreshTTL: helpers.MustDur(helpers.GetEnv("JWT_REFRESH_TTL", "720h"), 30*24*time.Hour),
 		},
 	}
 

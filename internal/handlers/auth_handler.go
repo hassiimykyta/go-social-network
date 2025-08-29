@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
+	"go-rest-chi/internal/auth"
 	"go-rest-chi/internal/resp"
 	"go-rest-chi/internal/services"
 	"net/http"
@@ -10,11 +11,13 @@ import (
 )
 
 type AuthHandler struct {
+	jwt   *auth.Service
 	users services.UserService
 }
 
-func NewAuthHandler(s services.UserService) *AuthHandler {
+func NewAuthHandler(jwt *auth.Service, s services.UserService) *AuthHandler {
 	return &AuthHandler{
+		jwt:   jwt,
 		users: s,
 	}
 }
@@ -28,6 +31,10 @@ type registerReq struct {
 type loginReq struct {
 	Identifier string `json:"identifier"`
 	Password   string `json:"password"`
+}
+
+type refreshReq struct {
+	RefreshToken string `json:"refresh_token"`
 }
 
 func lookLikeEmail(s string) bool {
@@ -88,12 +95,68 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 
 	}
 
-	pub, err := h.users.Login(r.Context(), identifier, password)
+	usr, err := h.users.Login(r.Context(), identifier, password)
 	if err != nil {
 		resp.Error(w, r, http.StatusConflict, "REGISTER_FAILED", err.Error())
 		return
 	}
 
-	resp.OK(w, r, pub)
+	access, err := h.jwt.IssueAccessToken(usr.Id, "user")
+	if err != nil {
+		resp.Error(w, r, http.StatusInternalServerError, "TOKEN_ISSUE_FAIL", "cannot issue access token")
+		return
+	}
+	refresh, err := h.jwt.IssueRefreshToken(usr.Id)
+	if err != nil {
+		resp.Error(w, r, http.StatusInternalServerError, "TOKEN_ISSUE_FAIL", "cannot issue refresh token")
+		return
+	}
+
+	resp.OK(w, r, map[string]any{
+		"user":          usr,
+		"access_token":  access,
+		"refresh_token": refresh,
+		"token_type":    "Bearer",
+		"expires_in":    int(h.jwt.AccessTTL().Seconds()),
+	})
+}
+
+func (h *AuthHandler) Refresh(w http.ResponseWriter, r *http.Request) {
+	var req refreshReq
+
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		resp.Error(w, r, http.StatusBadRequest, "BAD_JSON", "invalid json")
+		return
+	}
+
+	if strings.TrimSpace(req.RefreshToken) == "" {
+		resp.Error(w, r, http.StatusBadRequest, "MISSING_FIELDS", "refresh token is required")
+		return
+	}
+
+	claims, err := h.jwt.Verify(req.RefreshToken)
+	if err != nil {
+		resp.Error(w, r, http.StatusUnauthorized, "INVALID_REFRESH", "refresh token invalid or expired")
+		return
+	}
+
+	access, err := h.jwt.IssueAccessToken(claims.UserId, claims.Role)
+	if err != nil {
+		resp.Error(w, r, http.StatusInternalServerError, "TOKEN_FAIL", "cannot issue new access token")
+		return
+	}
+
+	newRefresh, err := h.jwt.IssueRefreshToken(claims.UserId)
+	if err != nil {
+		resp.Error(w, r, http.StatusInternalServerError, "TOKEN_FAIL", "cannot issue new refresh token")
+		return
+	}
+
+	resp.OK(w, r, map[string]any{
+		"access_token":  access,
+		"refresh_token": newRefresh,
+		"token_type":    "Bearer",
+		"expires_in":    int(h.jwt.AccessTTL().Seconds()),
+	})
 
 }
