@@ -1,6 +1,7 @@
 package router
 
 import (
+	"go-rest-chi/internal/router/routes"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -18,7 +19,9 @@ type CORSOpts struct {
 }
 
 type Options struct {
-	CORS CORSOpts
+	CORS          CORSOpts
+	StorageDriver string
+	LocalDir      string
 }
 
 func New(d Deps, opts Options) *chi.Mux {
@@ -40,6 +43,10 @@ func New(d Deps, opts Options) *chi.Mux {
 	}))
 
 	MountAPI(r, d)
+
+	if opts.StorageDriver == "local" {
+		routes.MountLocalMediaStatic(r, opts.LocalDir)
+	}
 
 	return r
 }

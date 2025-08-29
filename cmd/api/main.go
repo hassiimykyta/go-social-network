@@ -10,6 +10,7 @@ import (
 	"go-rest-chi/internal/repositories"
 	"go-rest-chi/internal/router"
 	"go-rest-chi/internal/services"
+	"go-rest-chi/internal/storage"
 	"log"
 	"os"
 	"os/signal"
@@ -35,19 +36,27 @@ func openDB(cfg *config.Config) (*appdb.SQL, error) {
 
 func initRouter(cfg *config.Config, sqlDB *appdb.SQL) *chi.Mux {
 
+	st, err := storage.NewFromConfig(cfg.Storage)
+	if err != nil {
+		panic(fmt.Errorf("storage init: %w", err))
+	}
+
 	userRepo := repositories.NewUserRepository(sqlDB)
 	postRepo := repositories.NewPostRepository(sqlDB)
+	mediaRepo := repositories.NewMediaRepository(sqlDB)
 
 	jwtSvc := auth.NewService(cfg.JWT.Secret, cfg.JWT.Issuer, cfg.JWT.AccessTTL, cfg.JWT.RefreshTTL)
 
 	userSvc := services.NewUserService(userRepo)
 	postSvc := services.NewPostService(postRepo)
+	mediaSvc := services.NewMediaService(mediaRepo, st, cfg.Storage.PresignTTL)
 
 	r := router.New(router.Deps{
 		DB: sqlDB,
 		Services: router.Services{
 			Users: userSvc,
 			Posts: postSvc,
+			Media: mediaSvc,
 			JWT:   jwtSvc,
 		},
 	}, router.Options{
@@ -59,6 +68,8 @@ func initRouter(cfg *config.Config, sqlDB *appdb.SQL) *chi.Mux {
 			AllowCredentials: cfg.CORS.AllowCredentials,
 			MaxAge:           cfg.CORS.MaxAge,
 		},
+		StorageDriver: cfg.Storage.Driver,
+		LocalDir:      cfg.Storage.LocalDir,
 	})
 
 	return r

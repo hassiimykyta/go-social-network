@@ -44,11 +44,25 @@ type JWTConfig struct {
 	RefreshTTL time.Duration
 }
 
+type StorageConfig struct {
+	Driver        string
+	LocalDir      string
+	PublicBaseURL string
+	PresignTTL    time.Duration
+	S3Bucket      string
+	S3Region      string
+	S3Endpoint    string
+	S3AccessKey   string
+	S3SecretKey   string
+	S3UsePath     bool
+}
+
 type Config struct {
-	App  AppConfig
-	DB   DBConfig
-	CORS CORSConfig
-	JWT  JWTConfig
+	App     AppConfig
+	DB      DBConfig
+	CORS    CORSConfig
+	JWT     JWTConfig
+	Storage StorageConfig
 }
 
 func (c *Config) Validate() error {
@@ -117,6 +131,19 @@ func Load() (*Config, error) {
 			Issuer:     helpers.GetEnv("JWT_ISSUER", "app"),
 			AccessTTL:  helpers.MustDur(helpers.GetEnv("JWT_ACCESS_TTL", "15m"), 15*time.Minute),
 			RefreshTTL: helpers.MustDur(helpers.GetEnv("JWT_REFRESH_TTL", "720h"), 30*24*time.Hour),
+		},
+		Storage: StorageConfig{
+			Driver:        helpers.GetEnv("STORAGE_DRIVER", "local"),
+			LocalDir:      helpers.GetEnv("STORAGE_LOCAL_DIR", "./var/media"),
+			PublicBaseURL: helpers.GetEnv("STORAGE_PUBLIC_BASE_URL", "http://localhost:8080"),
+			PresignTTL:    helpers.MustDur(helpers.GetEnv("STORAGE_PRESIGN_TTL", "10m"), 10*time.Minute),
+
+			S3Bucket:    helpers.GetEnv("S3_BUCKET", ""),
+			S3Region:    helpers.GetEnv("S3_REGION", ""),
+			S3Endpoint:  helpers.GetEnv("S3_ENDPOINT", ""),
+			S3AccessKey: helpers.GetEnv("S3_ACCESS_KEY", ""),
+			S3SecretKey: helpers.GetEnv("S3_SECRET_KEY", ""),
+			S3UsePath:   helpers.MustBool(helpers.GetEnv("S3_USE_PATH_STYLE", "true"), true),
 		},
 	}
 

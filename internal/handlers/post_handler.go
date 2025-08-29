@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
+	"go-rest-chi/internal/auth"
 	"go-rest-chi/internal/helpers"
 	"go-rest-chi/internal/resp"
 	"go-rest-chi/internal/services"
@@ -21,7 +22,6 @@ func NewPostHandler(s services.PostService) *PostHandler { return &PostHandler{s
 type createPostReq struct {
 	Title       string `json:"title"`
 	Description string `json:"description"`
-	UserID      int64  `json:"user_id"` // TODO: брать из JWT позже
 }
 
 type updatePostReq struct {
@@ -36,13 +36,19 @@ func (h *PostHandler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	req.Title = strings.TrimSpace(req.Title)
-	if req.Title == "" || req.UserID <= 0 {
-		resp.Error(w, r, http.StatusBadRequest, "MISSING_FIELDS", "title and user_id are required")
+	userID := auth.UserIDFromCtx(r.Context())
+	if userID == 0 {
+		resp.Error(w, r, http.StatusUnauthorized, "UNAUTHORIZED", "missing user")
 		return
 	}
 
-	post, err := h.svc.Create(r.Context(), req.Title, req.Description, req.UserID)
+	req.Title = strings.TrimSpace(req.Title)
+	if req.Title == "" {
+		resp.Error(w, r, http.StatusBadRequest, "MISSING_FIELDS", "title is required")
+		return
+	}
+
+	post, err := h.svc.Create(r.Context(), req.Title, req.Description, userID)
 	if err != nil {
 		resp.Error(w, r, http.StatusInternalServerError, "CREATE_POST_FAIL", "cannot create post")
 		return

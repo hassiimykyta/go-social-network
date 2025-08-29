@@ -9,6 +9,7 @@ import (
 type Services struct {
 	Users services.UserService
 	Posts services.PostService
+	Media services.MediaService
 	JWT   *auth.Service
 }
 

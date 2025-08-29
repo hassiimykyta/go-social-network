@@ -5,8 +5,23 @@
 package dbgen
 
 import (
+	"database/sql"
 	"time"
 )
+
+type Medium struct {
+	ID         int64
+	OwnerID    int64
+	Kind       string
+	StorageKey string
+	MimeType   string
+	SizeBytes  int64
+	Width      sql.NullInt32
+	Height     sql.NullInt32
+	DurationMs sql.NullInt32
+	CreatedAt  time.Time
+	DeletedAt  *time.Time
+}
 
 type Post struct {
 	ID          int64
@@ -16,6 +31,12 @@ type Post struct {
 	CreatedAt   time.Time
 	UpdatedAt   time.Time
 	DeletedAt   *time.Time
+}
+
+type PostMedium struct {
+	MediaID  int64
+	PostID   int64
+	Position int32
 }
 
 type User struct {

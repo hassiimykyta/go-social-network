@@ -5,6 +5,7 @@ services:
       dockerfile: Dockerfile.dev
     volumes:
       - .:/app
+      - ./var/media:/app/var/media
       - gopath:/home/appuser/go/pkg/mod
       - gocache:/home/appuser/.cache/go-build
     env_file:
