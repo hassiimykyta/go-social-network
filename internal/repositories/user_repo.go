@@ -33,7 +33,7 @@ func NewUserRepository(db *appdb.SQL) UserRepository {
 	return &userRepo{q: db.Q}
 }
 
-func toModel(u dbgen.User) models.User {
+func toUserModel(u dbgen.User) models.User {
 	return models.User{
 		Id:           u.ID,
 		Email:        u.Email,
@@ -62,7 +62,7 @@ func (r *userRepo) Create(ctx context.Context, email string, username string, ha
 		}
 		return models.User{}, fmt.Errorf("CreateUser: %v", err)
 	}
-	return toModel(u), nil
+	return toUserModel(u), nil
 }
 
 func (r *userRepo) GetByEmail(ctx context.Context, email string) (models.User, error) {
@@ -74,7 +74,7 @@ func (r *userRepo) GetByEmail(ctx context.Context, email string) (models.User, e
 		return models.User{}, fmt.Errorf("GetUserByEmail : %v", err)
 
 	}
-	return toModel(u), nil
+	return toUserModel(u), nil
 }
 
 func (r *userRepo) GetByUsername(ctx context.Context, username string) (models.User, error) {
@@ -85,7 +85,7 @@ func (r *userRepo) GetByUsername(ctx context.Context, username string) (models.U
 		}
 		return models.User{}, fmt.Errorf("GetUserByUsername : %v", err)
 	}
-	return toModel(u), nil
+	return toUserModel(u), nil
 }
 
 func (r *userRepo) ExistsByEmail(ctx context.Context, email string) (bool, error) {

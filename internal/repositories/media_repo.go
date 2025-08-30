@@ -6,6 +6,7 @@ import (
 	"fmt"
 	appdb "go-rest-chi/internal/db"
 	"go-rest-chi/internal/dbgen"
+	"go-rest-chi/internal/helpers"
 	"go-rest-chi/internal/models"
 )
 
@@ -35,8 +36,9 @@ func NewMediaRepository(sql *appdb.SQL) MediaRepository {
 }
 
 func toMediaModel(m dbgen.Medium) models.Media {
-	var deleted *sql.NullTime
-	_ = deleted
+	width := helpers.PtrFromNull(m.Width.Valid, m.Width.Int32)
+	height := helpers.PtrFromNull(m.Height.Valid, m.Height.Int32)
+	duration := helpers.PtrFromNull(m.DurationMs.Valid, m.DurationMs.Int32)
 
 	out := models.Media{
 		ID:         m.ID,
@@ -44,44 +46,41 @@ func toMediaModel(m dbgen.Medium) models.Media {
 		Kind:       m.Kind,
 		StorageKey: m.StorageKey,
 		MimeType:   m.MimeType,
+		Width:      width,
+		Height:     height,
+		DurationMs: duration,
 		SizeBytes:  m.SizeBytes,
 		CreatedAt:  m.CreatedAt,
 		DeletedAt:  m.DeletedAt,
 	}
 
-	if m.Width.Valid {
-		v := m.Width.Int32
-		out.Width = &v
-	}
-	if m.Height.Valid {
-		v := m.Height.Int32
-		out.Height = &v
-	}
-	if m.DurationMs.Valid {
-		v := m.DurationMs.Int32
-		out.DurationMs = &v
-	}
 	return out
-}
-
-func p2nulli32(p *int32) sql.NullInt32 {
-	if p == nil {
-		return sql.NullInt32{Valid: false}
-	}
-	return sql.NullInt32{Int32: *p, Valid: true}
 }
 
 // Create implements MediaRepository.
 func (m *mediaRepo) Create(ctx context.Context, p CreateMediaParams) (models.Media, error) {
+
+	width := helpers.ToNull(p.Width, func(v int32) sql.NullInt32 {
+		return sql.NullInt32{Int32: v, Valid: true}
+	})
+
+	height := helpers.ToNull(p.Height, func(v int32) sql.NullInt32 {
+		return sql.NullInt32{Int32: v, Valid: true}
+	})
+
+	duration := helpers.ToNull(p.DurationMs, func(v int32) sql.NullInt32 {
+		return sql.NullInt32{Int32: v, Valid: true}
+	})
+
 	row, err := m.q.CreateMedia(ctx, dbgen.CreateMediaParams{
 		OwnerID:    p.OwnerID,
 		Kind:       p.Kind,
 		StorageKey: p.StorageKey,
 		MimeType:   p.MimeType,
 		SizeBytes:  p.SizeBytes,
-		Width:      p2nulli32(p.Width),
-		Height:     p2nulli32(p.Height),
-		DurationMs: p2nulli32(p.DurationMs),
+		Width:      width,
+		Height:     height,
+		DurationMs: duration,
 	})
 	if err != nil {
 		return models.Media{}, fmt.Errorf("CreateMedia: %w", err)

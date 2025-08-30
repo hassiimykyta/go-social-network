@@ -20,7 +20,6 @@ type PostRepository interface {
 	Create(ctx context.Context, title string, description string, userId int64) (models.Post, error)
 	SoftDelete(ctx context.Context, id int64) error
 	UpdatePartitial(ctx context.Context, id int64, title *string, description *string) (models.Post, error)
-	ListPaginated(ctx context.Context, limit, offset int32) ([]models.Post, error)
 	ListWithMediaPaginated(ctx context.Context, userId *int64, limit, offset int32) ([]models.PostMedia, error)
 }
 
@@ -45,30 +44,19 @@ func toMediaModelFromRow(r dbgen.ListPostsWithMediaPaginatedRow) (models.Media, 
 		return models.Media{}, false
 	}
 
-	var width *int32
-	if r.MediaWidth.Valid {
-		v := r.MediaWidth.Int32
-		width = &v
-	}
-
-	var height *int32
-	if r.MediaHeight.Valid {
-		v := r.MediaHeight.Int32
-		height = &v
-	}
-
-	var duration *int32
-	if r.MediaDurationMs.Valid {
-		v := r.MediaDurationMs.Int32
-		duration = &v
-	}
+	width := helpers.PtrFromNull(r.MediaWidth.Valid, r.MediaWidth.Int32)
+	height := helpers.PtrFromNull(r.MediaHeight.Valid, r.MediaWidth.Int32)
+	duration := helpers.PtrFromNull(r.MediaDurationMs.Valid, r.MediaDurationMs.Int32)
+	kind := helpers.ValueOr(r.MediaKind.Valid, r.MediaKind.String, "")
+	mimeType := helpers.ValueOr(r.MediaMimeType.Valid, r.MediaMimeType.String, "")
+	storageKey := helpers.ValueOr(r.MediaStorageKey.Valid, r.MediaStorageKey.String, "")
 
 	m := models.Media{
 		ID:         r.MediaID.Int64,
 		OwnerID:    r.UserID,
-		Kind:       helpers.DerefStr(r.MediaKind),
-		MimeType:   helpers.DerefStr(r.MediaMimeType),
-		StorageKey: helpers.DerefStr(r.MediaStorageKey),
+		Kind:       kind,
+		MimeType:   mimeType,
+		StorageKey: storageKey,
 		Width:      width,
 		Height:     height,
 		DurationMs: duration,
@@ -82,10 +70,11 @@ func NewPostRepository(db *appdb.SQL) PostRepository {
 
 // ListWithMedia implements PostRepository.
 func (p *postRepo) ListWithMediaPaginated(ctx context.Context, userId *int64, limit int32, offset int32) ([]models.PostMedia, error) {
-	var uid sql.NullInt64
-	if userId != nil {
-		uid = sql.NullInt64{Int64: *userId, Valid: true}
-	}
+
+	uid := helpers.ToNull(userId, func(v int64) sql.NullInt64 {
+		return sql.NullInt64{Int64: v, Valid: true}
+	})
+
 	rows, err := p.q.ListPostsWithMediaPaginated(ctx, dbgen.ListPostsWithMediaPaginatedParams{
 		UserID: uid,
 		Limit:  limit,
@@ -148,27 +137,6 @@ func (p *postRepo) Create(ctx context.Context, title string, description string,
 	return toPostModelRow(row), nil
 }
 
-// ListPaginated implements PostRepository.
-func (p *postRepo) ListPaginated(ctx context.Context, limit int32, offset int32) ([]models.Post, error) {
-	rows, err := p.q.ListPostsPaginated(ctx, dbgen.ListPostsPaginatedParams{
-		Limit:  limit,
-		Offset: offset,
-	})
-
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			return []models.Post{}, ErrPostNotFound
-		}
-		return []models.Post{}, fmt.Errorf("GetAllPostPaginated : %v", err)
-
-	}
-	out := make([]models.Post, 0, len(rows))
-	for _, pr := range rows {
-		out = append(out, toPostModelRow(pr))
-	}
-	return out, nil
-}
-
 // SoftDelete implements PostRepository.
 func (p *postRepo) SoftDelete(ctx context.Context, id int64) error {
 	return p.q.SoftDeletePost(ctx, id)
@@ -176,13 +144,14 @@ func (p *postRepo) SoftDelete(ctx context.Context, id int64) error {
 
 // UpdatePartitial implements PostRepository.
 func (p *postRepo) UpdatePartitial(ctx context.Context, id int64, title *string, description *string) (models.Post, error) {
-	var tns, dns sql.NullString
-	if title != nil {
-		tns = sql.NullString{String: *title, Valid: true}
-	}
-	if description != nil {
-		dns = sql.NullString{String: *description, Valid: true}
-	}
+
+	tns := helpers.ToNull(title, func(v string) sql.NullString {
+		return sql.NullString{String: v, Valid: true}
+	})
+
+	dns := helpers.ToNull(description, func(v string) sql.NullString {
+		return sql.NullString{String: v, Valid: true}
+	})
 
 	row, err := p.q.UpdatePostPartial(ctx, dbgen.UpdatePostPartialParams{
 		ID:          id,
