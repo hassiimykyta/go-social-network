@@ -8,6 +8,7 @@ package dbgen
 import (
 	"context"
 	"database/sql"
+	"time"
 )
 
 const createPost = `-- name: CreatePost :one
@@ -106,6 +107,93 @@ func (q *Queries) ListPostsPaginated(ctx context.Context, arg ListPostsPaginated
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.DeletedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listPostsWithMediaPaginated = `-- name: ListPostsWithMediaPaginated :many
+select p.id, p.title, p.description, p.user_id, p.created_at, p.updated_at, p.deleted_at,
+  m.id          AS media_id,
+  m.kind        AS media_kind,
+  m.mime_type   AS media_mime_type,
+  m.storage_key AS media_storage_key,
+  m.width       AS media_width,
+  m.height      AS media_height,
+  m.duration_ms AS media_duration_ms,
+  pm.position   AS media_position
+from posts p 
+left join post_media pm
+on pm.post_id = p.id
+left join media m
+on m.id = pm.media_id
+and m.deleted_at is null
+where p.deleted_at is null
+and  ($1::bigint IS NULL OR p.user_id = $1::bigint)
+order by p.created_at desc, p.id desc,
+pm.position asc, m.created_at asc, m.id asc
+limit $3 
+offset $2
+`
+
+type ListPostsWithMediaPaginatedParams struct {
+	UserID sql.NullInt64
+	Offset int32
+	Limit  int32
+}
+
+type ListPostsWithMediaPaginatedRow struct {
+	ID              int64
+	Title           string
+	Description     string
+	UserID          int64
+	CreatedAt       time.Time
+	UpdatedAt       time.Time
+	DeletedAt       *time.Time
+	MediaID         sql.NullInt64
+	MediaKind       sql.NullString
+	MediaMimeType   sql.NullString
+	MediaStorageKey sql.NullString
+	MediaWidth      sql.NullInt32
+	MediaHeight     sql.NullInt32
+	MediaDurationMs sql.NullInt32
+	MediaPosition   sql.NullInt32
+}
+
+func (q *Queries) ListPostsWithMediaPaginated(ctx context.Context, arg ListPostsWithMediaPaginatedParams) ([]ListPostsWithMediaPaginatedRow, error) {
+	rows, err := q.db.QueryContext(ctx, listPostsWithMediaPaginated, arg.UserID, arg.Offset, arg.Limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListPostsWithMediaPaginatedRow
+	for rows.Next() {
+		var i ListPostsWithMediaPaginatedRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.Title,
+			&i.Description,
+			&i.UserID,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.DeletedAt,
+			&i.MediaID,
+			&i.MediaKind,
+			&i.MediaMimeType,
+			&i.MediaStorageKey,
+			&i.MediaWidth,
+			&i.MediaHeight,
+			&i.MediaDurationMs,
+			&i.MediaPosition,
 		); err != nil {
 			return nil, err
 		}

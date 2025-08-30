@@ -48,7 +48,7 @@ func initRouter(cfg *config.Config, sqlDB *appdb.SQL) *chi.Mux {
 	jwtSvc := auth.NewService(cfg.JWT.Secret, cfg.JWT.Issuer, cfg.JWT.AccessTTL, cfg.JWT.RefreshTTL)
 
 	userSvc := services.NewUserService(userRepo)
-	postSvc := services.NewPostService(postRepo)
+	postSvc := services.NewPostService(postRepo, st)
 	mediaSvc := services.NewMediaService(mediaRepo, st, cfg.Storage.PresignTTL)
 
 	r := router.New(router.Deps{

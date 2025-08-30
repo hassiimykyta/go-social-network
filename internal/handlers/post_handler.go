@@ -59,8 +59,14 @@ func (h *PostHandler) Create(w http.ResponseWriter, r *http.Request) {
 func (h *PostHandler) List(w http.ResponseWriter, r *http.Request) {
 	limit := helpers.ParseInt(r.URL.Query().Get("limit"), 10, 100)
 	offset := helpers.ParseInt(r.URL.Query().Get("offset"), 0, 1_000_000)
+	var userID *int64
+	if uidStr := r.URL.Query().Get("user_id"); uidStr != "" {
+		if uid, err := strconv.ParseInt(uidStr, 10, 64); err == nil && uid > 0 {
+			userID = &uid
+		}
+	}
 
-	items, err := h.svc.ListPaginated(r.Context(), int32(limit), int32(offset))
+	items, err := h.svc.ListPaginated(r.Context(), userID, int32(limit), int32(offset))
 	if err != nil {
 		resp.Error(w, r, http.StatusInternalServerError, "LIST_POSTS_FAIL", "cannot list posts")
 		return
@@ -68,24 +74,6 @@ func (h *PostHandler) List(w http.ResponseWriter, r *http.Request) {
 	resp.OK(w, r, map[string]any{
 		"items": items,
 		"page":  map[string]any{"limit": limit, "offset": offset},
-	})
-}
-
-func (h *PostHandler) ListByUser(w http.ResponseWriter, r *http.Request) {
-	uidStr := chi.URLParam(r, "id")
-	uid, err := strconv.ParseInt(uidStr, 10, 64)
-	if err != nil || uid <= 0 {
-		resp.Error(w, r, http.StatusBadRequest, "BAD_USER_ID", "invalid user id")
-		return
-	}
-
-	items, err := h.svc.GetAllByUser(r.Context(), uid)
-	if err != nil {
-		resp.Error(w, r, http.StatusInternalServerError, "LIST_USER_POSTS_FAIL", "cannot list user posts")
-		return
-	}
-	resp.OK(w, r, map[string]any{
-		"items": items,
 	})
 }
 

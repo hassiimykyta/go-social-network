@@ -17,12 +17,13 @@ type Media struct {
 }
 
 type MediaPublic struct {
-	ID       int64  `json:"id"`
-	Kind     string `json:"kind"`
-	MimeType string `json:"mime_type"`
-	URL      string `json:"url"`
-	Width    *int32 `json:"width,omitempty"`
-	Height   *int32 `json:"height,omitempty"`
+	ID         int64  `json:"id"`
+	Kind       string `json:"kind"`
+	MimeType   string `json:"mime_type"`
+	URL        string `json:"url"`
+	Width      *int32 `json:"width,omitempty"`
+	Height     *int32 `json:"height,omitempty"`
+	DurationMs *int32 `json:"duration_ms,omitempty"`
 }
 
 func (m Media) PublicWithURL(u string) MediaPublic {

@@ -14,7 +14,6 @@ func MountAPI(r *chi.Mux, d Deps) {
 			routes.MountAuth(v1, d.Services.JWT, d.Services.Users)
 			routes.MountPosts(v1, d.Services.JWT, d.Services.Posts)
 			routes.MountMedia(v1, d.Services.JWT, d.Services.Media)
-			routes.MountUsers(v1, d.Services.Posts)
 		})
 	})
 }

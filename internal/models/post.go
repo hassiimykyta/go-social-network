@@ -1,6 +1,8 @@
 package models
 
-import "time"
+import (
+	"time"
+)
 
 type Post struct {
 	Id          int64      `json:"id"`
@@ -18,6 +20,16 @@ type PostPublic struct {
 	Description string    `json:"description"`
 	UserId      int64     `json:"user_id"`
 	CreatedAt   time.Time `json:"created_at"`
+}
+
+type PostMedia struct {
+	Post   Post    `json:"post"`
+	Medias []Media `json:"medias"`
+}
+
+type PostMediaPublic struct {
+	Post   PostPublic    `json:"post"`
+	Medias []MediaPublic `json:"medias"`
 }
 
 func (p Post) Public() PostPublic {
